@@ -82,6 +82,7 @@ export default function App() {
   const [aiTopics, setAiTopics] = useState<string[]>([]);
   const [isFetchingTopics, setIsFetchingTopics] = useState(false);
 
+  // Fetch topics only as background info
   useEffect(() => {
     const fetchTopics = async () => {
       setIsFetchingTopics(true);
@@ -97,38 +98,25 @@ export default function App() {
     fetchTopics();
   }, [state.formData.subject, state.formData.grade]);
 
+  // AI Assistant logic: Sugget CP/TP when material is typed
   useEffect(() => {
-    // Prefill logic triggered when material changes
     const timer = setTimeout(() => {
       const triggerPrefill = async () => {
-        if (state.formData.material && state.formData.material.length > 3 && state.formData.subject) {
+        // Only prefill CP/TP if the user has typed something and fields are empty
+        if (state.formData.material && state.formData.material.length > 5 && state.formData.subject && (!state.formData.cp || !state.formData.tp)) {
           setState(prev => ({ ...prev, isPrefilling: true }));
           try {
             const result = await pregenerateCPandTP(state.formData.subject, state.formData.material, state.formData.grade);
             
-            const dimensionValues = Object.values(GraduateDimension);
-            const suggestedDimensions = (result.dimensions || [])
-              .map((d: string) => dimensionValues.find(val => 
-                val.toLowerCase().includes(d.toLowerCase()) || d.toLowerCase().includes(val.toLowerCase())
-              ))
-              .filter(Boolean) as GraduateDimension[];
-
-            const pedagogyValues = Object.values(PedagogicalPractice);
-            const suggestedPedagogies = (result.suggestedPedagogy || [])
-              .map((p: string) => pedagogyValues.find(val => 
-                val.toLowerCase().includes(p.toLowerCase()) || p.toLowerCase().includes(val.toLowerCase())
-              ))
-              .filter(Boolean) as PedagogicalPractice[];
-
             setState(prev => ({
               ...prev,
               formData: {
                 ...prev.formData,
-                cp: result.cp,
-                tp: result.tp.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n"),
-                dimensions: suggestedDimensions.length > 0 ? suggestedDimensions : prev.formData.dimensions,
-                pedagogy: suggestedPedagogies.length > 0 ? suggestedPedagogies : prev.formData.pedagogy,
-                meetingCount: result.suggestedMeetings || prev.formData.meetingCount
+                // Only suggest CP and TP if currently empty, respect manual input
+                cp: prev.formData.cp || result.cp,
+                tp: prev.formData.tp || result.tp.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n"),
+                // Dimensions and Pedagogy are now strictly manual as requested
+                meetingCount: prev.formData.meetingCount === 2 ? result.suggestedMeetings || 2 : prev.formData.meetingCount
               },
               isPrefilling: false
             }));
@@ -138,7 +126,7 @@ export default function App() {
         }
       };
       triggerPrefill();
-    }, 800); // Debounce to prevent too many API calls while typing
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, [state.formData.material, state.formData.subject, state.formData.grade]);
@@ -199,50 +187,16 @@ export default function App() {
         <meta charset='utf-8'>
         <title>RPM 2025 - ${state.formData.subject}</title>
         <style>
-          @page { 
-            size: 210mm 330mm; 
-            margin: 10mm 10mm 10mm 10mm; 
-            mso-header-margin: 35.4pt;
-            mso-footer-margin: 35.4pt;
-            mso-paper-source: 0;
-          }
-          body { 
-            font-family: 'Times New Roman', serif; 
-            font-size: 10pt;
-            line-height: 1.0;
-            color: black; 
-            width: 190mm;
-          }
-          table { 
-            border-collapse: collapse; 
-            width: 100% !important; 
-            border: 0.75pt solid black; 
-            margin-bottom: 10pt; 
-            table-layout: fixed; 
-          }
-          td, th { 
-            border: 0.75pt solid black; 
-            padding: 4pt; 
-            vertical-align: top; 
-            text-align: justify; 
-            word-wrap: break-word; 
-            font-size: 10pt;
-            line-height: 1.0;
-          }
-          .table-header-pink { 
-            background-color: #fce4ec !important; 
-            font-weight: bold; 
-            text-align: center !important; 
-            text-transform: uppercase; 
-          }
-          .bg-gray-50 { background-color: #f9f9f9 !important; }
+          @page { size: 210mm 330mm; margin: 10mm; }
+          body { font-family: 'Times New Roman', serif; font-size: 10pt; line-height: 1.0; }
+          table { border-collapse: collapse; width: 100%; border: 1pt solid black; margin-bottom: 10pt; }
+          td, th { border: 1pt solid black; padding: 4pt; vertical-align: top; text-align: justify; font-size: 10pt; }
+          .table-header-pink { background-color: #fce4ec; font-weight: bold; text-align: center; }
           .font-bold { font-weight: bold; }
           .underline { text-decoration: underline; }
           .uppercase { text-transform: uppercase; }
           .whitespace-pre-line { white-space: pre-line; }
           .page-break { page-break-before: always; }
-          img { max-width: 100%; height: auto; display: block; }
-          .text-center { text-align: center; }
         </style>
       </head>
       <body>${content}</body>
@@ -261,15 +215,13 @@ export default function App() {
   const handleDownloadPDF = () => {
     const element = document.getElementById('rpm-print-area');
     if (!element) return;
-
     const opt = {
-      margin:       [10, 10, 10, 10], 
-      filename:     `RPM_2025_${state.formData.subject}_${state.formData.material.replace(/\s+/g, '_')}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false, letterRendering: true },
-      jsPDF:        { unit: 'mm', format: [210, 330], orientation: 'portrait' }
+      margin: 10,
+      filename: `RPM_2025_${state.formData.subject}_${state.formData.material.replace(/\s+/g, '_')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: [210, 330], orientation: 'portrait' }
     };
-
     html2pdf().set(opt).from(element).save();
   };
 
@@ -302,7 +254,6 @@ export default function App() {
 
       <main className="max-w-7xl mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-8">
         <section className="flex-1 no-print">
-          {/* Teks Berjalan Merah Putih di atas form */}
           <div className="mb-4 marquee-container bg-red-600 rounded-xl py-2 border-2 border-white shadow-lg overflow-hidden">
             <div className="animate-marquee inline-block">
               <span className="text-sm font-black text-white uppercase px-10 italic">
@@ -312,7 +263,6 @@ export default function App() {
           </div>
           
           <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-            {/* WARNA LATAR TAB PERENCANAAN PEMBELAJARAN MENDALAM DIUBAH MENJADI HIJAU (EMERALD) */}
             <div className="bg-emerald-700 px-8 py-6 shadow-inner">
               <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tight">
                 <FileText className="text-emerald-200" size={24} />
@@ -362,34 +312,42 @@ export default function App() {
                 <div className="p-6 bg-slate-50/50 rounded-3xl border border-slate-200 space-y-6">
                   <div>
                     <label className="block text-[10px] font-black text-emerald-900 mb-2 uppercase tracking-wider flex items-center gap-2">
-                      Topik Kurikulum Merdeka 2025 *
+                      Topik Kurikulum (Tulis Manual) *
                       {(isFetchingTopics || state.isPrefilling) && <Loader2 size={14} className="animate-spin text-emerald-600" />}
                     </label>
-                    <div className="relative">
-                      <input 
-                        type="text"
-                        name="material" 
-                        value={state.formData.material} 
-                        onChange={handleInputChange} 
-                        placeholder="Ketik topik materi (contoh: Fotosintesis, Puisi, Bangun Datar)..."
-                        list="ai-topics-list"
-                        autoComplete="off"
-                        className="w-full px-5 py-3.5 border-2 border-emerald-100 rounded-2xl bg-white text-slate-900 font-black focus:border-emerald-500 outline-none shadow-sm transition-all"
-                      />
-                      <datalist id="ai-topics-list">
-                        {aiTopics.map(t => <option key={t} value={t} />)}
-                      </datalist>
-                    </div>
-                    <p className="mt-2 text-[9px] text-slate-500 italic">* Ketik materi secara manual atau pilih saran dari AI yang muncul di atas.</p>
+                    <input 
+                      type="text"
+                      name="material" 
+                      value={state.formData.material} 
+                      onChange={handleInputChange} 
+                      placeholder="Contoh: Perkembangbiakan Hewan, Unsur Intrinsik Puisi..."
+                      autoComplete="off"
+                      className="w-full px-5 py-3.5 border-2 border-emerald-100 rounded-2xl bg-white text-slate-900 font-black focus:border-emerald-500 outline-none shadow-sm transition-all"
+                    />
+                    <p className="mt-2 text-[9px] text-slate-500 italic">* Tuliskan topik atau bab yang ingin Anda ajarkan secara manual di atas.</p>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="col-span-2">
-                      <label className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Capaian Pembelajaran (CP) 2025</label>
-                      <textarea readOnly value={state.formData.cp} rows={2} className="w-full px-5 py-3 border-2 border-slate-100 rounded-2xl bg-emerald-50/30 text-slate-800 text-[11px] font-medium leading-relaxed italic" />
+                      <label className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Capaian Pembelajaran (CP) - Tulis Manual</label>
+                      <textarea 
+                        name="cp"
+                        value={state.formData.cp} 
+                        onChange={handleInputChange}
+                        rows={3} 
+                        placeholder="Tuliskan atau tempelkan Capaian Pembelajaran (CP) di sini..."
+                        className="w-full px-5 py-3 border-2 border-emerald-50 rounded-2xl bg-white text-slate-800 text-[11px] font-medium leading-relaxed focus:border-emerald-500 outline-none shadow-inner" 
+                      />
                     </div>
                     <div className="col-span-2">
-                      <label className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tujuan Pembelajaran (TP)</label>
-                      <textarea name="tp" value={state.formData.tp} onChange={handleInputChange} rows={3} className="w-full px-5 py-3 border-2 border-emerald-50 rounded-2xl bg-white text-slate-900 text-xs font-bold leading-relaxed" />
+                      <label className="block text-[10px] font-black text-slate-500 mb-1.5 uppercase tracking-wider">Tujuan Pembelajaran (TP) - Tulis Manual</label>
+                      <textarea 
+                        name="tp" 
+                        value={state.formData.tp} 
+                        onChange={handleInputChange} 
+                        rows={3} 
+                        placeholder="Tuliskan Tujuan Pembelajaran di sini..."
+                        className="w-full px-5 py-3 border-2 border-emerald-50 rounded-2xl bg-white text-slate-900 text-xs font-bold leading-relaxed" 
+                      />
                     </div>
                   </div>
                 </div>
@@ -398,26 +356,27 @@ export default function App() {
               <div className="space-y-6">
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 mb-3 uppercase tracking-wider flex items-center gap-2">
-                    Praktik Pedagogis (Otomatis AI)
+                    Praktik Pedagogis (Pilih Manual) *
                     {state.isPrefilling && <Zap size={14} className="text-emerald-600 animate-pulse fill-emerald-100" />}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {Object.values(PedagogicalPractice).map(p => (
-                      <button type="button" key={p} onClick={() => handleMultiSelect('pedagogy', p)} className={`px-4 py-2 rounded-xl text-[10px] font-black border-2 transition-all duration-300 ${state.formData.pedagogy.includes(p) ? 'bg-emerald-700 text-white border-emerald-700 shadow-lg' : 'bg-white text-slate-600 border-slate-100 hover:border-emerald-300'}`}>
+                      <button type="button" key={p} onClick={() => handleMultiSelect('pedagogy', p)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border-2 transition-all duration-300 ${state.formData.pedagogy.includes(p) ? 'bg-emerald-700 text-white border-emerald-700 shadow-lg scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50'}`}>
                         {p}
                       </button>
                     ))}
                   </div>
+                  <p className="mt-2 text-[9px] text-slate-400 italic">* Klik pada praktik pedagogis yang ingin Anda terapkan (Bisa pilih lebih dari satu).</p>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 mb-1 uppercase tracking-wider flex items-center gap-2">
-                    Dimensi Profil Lulusan (Otomatis AI)
+                    Dimensi Profil Lulusan (Pilih Manual) *
                     {state.isPrefilling && <Zap size={14} className="text-emerald-600 animate-pulse fill-emerald-100" />}
                   </label>
-                  <p className="text-[9px] text-slate-400 mb-3 italic">Pilihan di bawah akan otomatis terpilih sesuai saran AI berdasarkan materi.</p>
+                  <p className="text-[9px] text-slate-400 mb-3 italic">Pilih minimal 3 dimensi yang akan dikembangkan dalam topik ini.</p>
                   <div className="flex flex-wrap gap-2">
                     {Object.values(GraduateDimension).map(d => (
-                      <button type="button" key={d} onClick={() => handleMultiSelect('dimensions', d)} className={`px-4 py-2 rounded-xl text-[10px] font-black border-2 transition-all duration-500 ${state.formData.dimensions.includes(d) ? 'bg-emerald-700 text-white border-emerald-700 shadow-lg scale-105 animate-pulse-once' : 'bg-white text-slate-600 border-slate-100 hover:border-emerald-300'}`}>
+                      <button type="button" key={d} onClick={() => handleMultiSelect('dimensions', d)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border-2 transition-all duration-300 ${state.formData.dimensions.includes(d) ? 'bg-emerald-700 text-white border-emerald-700 shadow-lg scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50'}`}>
                         {d}
                       </button>
                     ))}
@@ -470,7 +429,7 @@ export default function App() {
                 <BookOpen size={100} strokeWidth={1} className="text-slate-200" />
               </div>
               <h3 className="text-3xl font-black text-slate-400 uppercase tracking-tighter">Preview Dokumen</h3>
-              <p className="text-slate-400 mt-4 max-w-xs mx-auto leading-relaxed">Ketik topik materi agar AI dapat menyarankan target dimensi profil lulusan dan desain RPM secara otomatis.</p>
+              <p className="text-slate-400 mt-4 max-w-xs mx-auto leading-relaxed">Isi topik materi secara manual di samping untuk mulai menyusun RPM berstandar 2025.</p>
             </div>
           ) : (
             <div className="space-y-6">
