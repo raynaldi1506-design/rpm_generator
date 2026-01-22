@@ -27,7 +27,8 @@ import {
   Layout,
   ClipboardCheck,
   Zap,
-  FileDown
+  FileDown,
+  ChevronRight
 } from 'lucide-react';
 
 const TEACHERS = [
@@ -82,7 +83,6 @@ export default function App() {
   const [aiTopics, setAiTopics] = useState<string[]>([]);
   const [isFetchingTopics, setIsFetchingTopics] = useState(false);
 
-  // Fetch topics only as background info
   useEffect(() => {
     const fetchTopics = async () => {
       setIsFetchingTopics(true);
@@ -98,11 +98,10 @@ export default function App() {
     fetchTopics();
   }, [state.formData.subject, state.formData.grade]);
 
-  // AI Assistant logic: Sugget CP/TP when material is typed
+  // AI Assistant logic: suggest CP/TP when material is typed but allow manual override
   useEffect(() => {
     const timer = setTimeout(() => {
       const triggerPrefill = async () => {
-        // Only prefill CP/TP if the user has typed something and fields are empty
         if (state.formData.material && state.formData.material.length > 5 && state.formData.subject && (!state.formData.cp || !state.formData.tp)) {
           setState(prev => ({ ...prev, isPrefilling: true }));
           try {
@@ -112,10 +111,8 @@ export default function App() {
               ...prev,
               formData: {
                 ...prev.formData,
-                // Only suggest CP and TP if currently empty, respect manual input
                 cp: prev.formData.cp || result.cp,
                 tp: prev.formData.tp || result.tp.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n"),
-                // Dimensions and Pedagogy are now strictly manual as requested
                 meetingCount: prev.formData.meetingCount === 2 ? result.suggestedMeetings || 2 : prev.formData.meetingCount
               },
               isPrefilling: false
@@ -126,7 +123,7 @@ export default function App() {
         }
       };
       triggerPrefill();
-    }, 1200);
+    }, 1500);
 
     return () => clearTimeout(timer);
   }, [state.formData.material, state.formData.subject, state.formData.grade]);
@@ -187,11 +184,11 @@ export default function App() {
         <meta charset='utf-8'>
         <title>RPM 2025 - ${state.formData.subject}</title>
         <style>
-          @page { size: 210mm 330mm; margin: 10mm; }
-          body { font-family: 'Times New Roman', serif; font-size: 10pt; line-height: 1.0; }
-          table { border-collapse: collapse; width: 100%; border: 1pt solid black; margin-bottom: 10pt; }
-          td, th { border: 1pt solid black; padding: 4pt; vertical-align: top; text-align: justify; font-size: 10pt; }
-          .table-header-pink { background-color: #fce4ec; font-weight: bold; text-align: center; }
+          @page { size: 210mm 330mm; margin: 15mm; }
+          body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.15; color: black; }
+          table { border-collapse: collapse; width: 100%; border: 1pt solid black; margin-bottom: 12pt; }
+          td, th { border: 1pt solid black; padding: 6pt; vertical-align: top; text-align: justify; font-size: 10pt; }
+          .table-header-pink { background-color: #fce4ec; font-weight: bold; text-align: center; text-transform: uppercase; }
           .font-bold { font-weight: bold; }
           .underline { text-decoration: underline; }
           .uppercase { text-transform: uppercase; }
@@ -231,7 +228,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen pb-12 bg-slate-50">
-      <header className="bg-indigo-900 text-white py-4 px-4 no-print shadow-2xl sticky top-0 z-50">
+      <header className="bg-emerald-900 text-white py-4 px-4 no-print shadow-xl sticky top-0 z-50">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-4">
           <div className="flex items-center gap-3 shrink-0">
             <div className="bg-white/10 p-2 rounded-lg">
@@ -239,13 +236,13 @@ export default function App() {
             </div>
             <div>
               <h1 className="text-xl font-black italic tracking-tighter leading-none">GENERATOR RPM</h1>
-              <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest mt-1">Kurikulum Merdeka Versi 2025</p>
+              <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest mt-1">Kurikulum Merdeka Versi 2025</p>
             </div>
           </div>
           <div className="marquee-container flex-1 bg-black/30 rounded-full py-1.5 border border-white/10">
             <div className="animate-marquee inline-block">
               <span className="text-[18px] font-bold text-yellow-300 drop-shadow-sm px-6">
-                Created NASRIWANTO, S.Pd • SDN 14 Andopan • TP 2025/2026 • Kurikulum Merdeka Terupdate 2025 • Pelatihan Pembelajaran Mendalam
+                Created NASRIWANTO, S.Pd • SDN 14 Andopan • TP 2025/2026 • Kurikulum Merdeka Terupdate 2025 • Perencanaan Pembelajaran Mendalam
               </span>
             </div>
           </div>
@@ -357,7 +354,6 @@ export default function App() {
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 mb-3 uppercase tracking-wider flex items-center gap-2">
                     Praktik Pedagogis (Pilih Manual) *
-                    {state.isPrefilling && <Zap size={14} className="text-emerald-600 animate-pulse fill-emerald-100" />}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {Object.values(PedagogicalPractice).map(p => (
@@ -366,14 +362,13 @@ export default function App() {
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-[9px] text-slate-400 italic">* Klik pada praktik pedagogis yang ingin Anda terapkan (Bisa pilih lebih dari satu).</p>
+                  <p className="mt-2 text-[9px] text-slate-400 italic">* Klik pada praktik pedagogis yang ingin Anda terapkan.</p>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 mb-1 uppercase tracking-wider flex items-center gap-2">
                     Dimensi Profil Lulusan (Pilih Manual) *
-                    {state.isPrefilling && <Zap size={14} className="text-emerald-600 animate-pulse fill-emerald-100" />}
                   </label>
-                  <p className="text-[9px] text-slate-400 mb-3 italic">Pilih minimal 3 dimensi yang akan dikembangkan dalam topik ini.</p>
+                  <p className="text-[9px] text-slate-400 mb-3 italic">Pilih dimensi yang akan dikembangkan dalam topik ini.</p>
                   <div className="flex flex-wrap gap-2">
                     {Object.values(GraduateDimension).map(d => (
                       <button type="button" key={d} onClick={() => handleMultiSelect('dimensions', d)} className={`px-4 py-2.5 rounded-xl text-[10px] font-black border-2 transition-all duration-300 ${state.formData.dimensions.includes(d) ? 'bg-emerald-700 text-white border-emerald-700 shadow-lg scale-105' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50'}`}>
@@ -451,7 +446,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div id="rpm-print-area" className="f4-page shadow-2xl mx-auto overflow-hidden">
+              <div id="rpm-print-area" className="f4-page shadow-2xl mx-auto overflow-hidden text-black">
                 <h2 className="text-center text-2xl font-bold mb-10 underline uppercase tracking-tight">RENCANA PEMBELAJARAN MENDALAM (RPM)</h2>
 
                 <table className="table-spreadsheet">

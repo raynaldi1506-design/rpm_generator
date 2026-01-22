@@ -1,11 +1,8 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { RPMFormData, GeneratedRPMContent } from "../types";
 
-const apiKey = process.env.API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
-
 export const getAITopics = async (subject: string, grade: string) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const model = "gemini-3-flash-preview";
   const prompt = `Sebagai pakar pendidikan Indonesia, berikan daftar 10 topik materi pelajaran utama yang SANGAT SPESIFIK dan SESUAI dengan Capaian Pembelajaran (CP) Kurikulum Merdeka TERBARU tahun 2025 untuk Semester 2 (Genap):
     Mata Pelajaran: ${subject}
@@ -25,13 +22,14 @@ export const getAITopics = async (subject: string, grade: string) => {
   });
 
   try {
-    return JSON.parse(response.text);
+    return JSON.parse(response.text || "[]");
   } catch (e) {
     return [];
   }
 };
 
 export const pregenerateCPandTP = async (subject: string, material: string, grade: string) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   const model = "gemini-3-flash-preview";
   const prompt = `Sebagai pakar Kurikulum Merdeka Indonesia versi 2025, buatkan detail berikut untuk:
     Mata Pelajaran: ${subject}
@@ -65,11 +63,12 @@ export const pregenerateCPandTP = async (subject: string, material: string, grad
     }
   });
 
-  return JSON.parse(response.text);
+  return JSON.parse(response.text || "{}");
 };
 
 export const generateRPMContent = async (formData: RPMFormData): Promise<GeneratedRPMContent> => {
-  const model = "gemini-3-flash-preview";
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const model = "gemini-3-pro-preview";
   
   const prompt = `
     Buatkan konten otomatis untuk Rencana Pembelajaran Mendalam (RPM) Sekolah Dasar (SD) berstandar Kurikulum Merdeka 2025:
@@ -83,18 +82,18 @@ export const generateRPMContent = async (formData: RPMFormData): Promise<Generat
     - Jumlah Pertemuan: ${formData.meetingCount}
     
     Persyaratan Output JSON:
-    1. students: Deskripsi profil siswa SD.
-    2. interdisciplinary: Hubungan materi dengan disiplin lain.
-    3. partnership: Kemitraan pembelajaran.
-    4. environment: Lingkungan belajar.
-    5. digitalTools: Referensi tools digital.
-    6. summary: Ringkasan Materi yang mendalam.
-    7. meetings: Langkah pembelajaran per pertemuan.
-    8. assessments: Detail asesmen AWAL, PROSES, dan AKHIR dengan format Teknik, Instrumen, dan Rubrik.
-    9. lkpd: Lembar Kerja Peserta Didik (LKPD) lengkap.
-    10. formativeQuestions: 10 soal pilihan ganda formatif dengan kunci jawaban.
+    1. students: Deskripsi profil siswa SD yang relevan dengan materi ini.
+    2. interdisciplinary: Bagaimana materi ini berhubungan dengan mata pelajaran lain (Lintas Disiplin).
+    3. partnership: Ide kemitraan (misal: orang tua, komunitas, atau ahli).
+    4. environment: Setting lingkungan belajar yang mendukung pembelajaran mendalam.
+    5. digitalTools: Rekomendasi aplikasi atau alat digital yang spesifik.
+    6. summary: Ringkasan Materi yang esensial dan mendalam.
+    7. meetings: Langkah pembelajaran mendalam per pertemuan (minimal 2 pertemuan jika memungkinkan).
+    8. assessments: Detail asesmen AWAL (Diagnostik), PROSES (Formatif), dan AKHIR (Sumatif) dengan format Teknik, Instrumen, dan Rubrik.
+    9. lkpd: Struktur Lembar Kerja Peserta Didik (LKPD) yang menarik.
+    10. formativeQuestions: 10 soal pilihan ganda yang HOTS (Higher Order Thinking Skills) lengkap dengan kunci jawaban.
     
-    Gunakan Bahasa Indonesia formal.
+    Gunakan Bahasa Indonesia yang inspiratif, profesional, dan mudah dipahami guru SD.
   `;
 
   const response = await ai.models.generateContent({
@@ -172,15 +171,15 @@ export const generateRPMContent = async (formData: RPMFormData): Promise<Generat
     }
   });
 
-  return JSON.parse(response.text);
+  return JSON.parse(response.text || "{}");
 };
 
 export const generateRPMImage = async (material: string): Promise<string | null> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   try {
     const model = "gemini-2.5-flash-image";
-    const prompt = `Professional educational illustration for elementary school students (SD) about the topic: "${material}". 
-    Style: high-quality clean vector art, vibrant classroom-friendly colors, clear and simple educational focus, modern flat design. 
-    Strictly no text, labels, or watermarks in the image.`;
+    const prompt = `Visual aids for elementary school students (SD) learning about: "${material}". 
+    Art style: professional educational illustration, clean vector style, bright and friendly colors, clear educational subject, no text, no labels, 4k quality.`;
     
     const response = await ai.models.generateContent({
       model,
