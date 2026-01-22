@@ -25,10 +25,8 @@ import {
   School,
   UserCircle,
   Layout,
-  ClipboardCheck,
   Zap,
-  FileDown,
-  ChevronRight
+  FileDown
 } from 'lucide-react';
 
 const TEACHERS = [
@@ -98,7 +96,6 @@ export default function App() {
     fetchTopics();
   }, [state.formData.subject, state.formData.grade]);
 
-  // AI Assistant logic: suggest CP/TP when material is typed but allow manual override
   useEffect(() => {
     const timer = setTimeout(() => {
       const triggerPrefill = async () => {
@@ -310,7 +307,7 @@ export default function App() {
                   <div>
                     <label className="block text-[10px] font-black text-emerald-900 mb-2 uppercase tracking-wider flex items-center gap-2">
                       Topik Kurikulum (Tulis Manual) *
-                      {(isFetchingTopics || state.isPrefilling) && <Loader2 size={14} className="animate-spin text-emerald-600" />}
+                      {state.isPrefilling && <Loader2 size={14} className="animate-spin text-emerald-600" />}
                     </label>
                     <input 
                       type="text"
